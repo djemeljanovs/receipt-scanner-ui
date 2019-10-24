@@ -8,6 +8,11 @@ interface IPerspectiveEditorProps {
     imageBase64?: string;
 }
 
+interface IPerspectiveEditorState{
+    contour?: Contour;
+    draggedPointIndex?: number;
+}
+
 const Wrapper = styled.div`
   text-align: center;
   width: 100%;
@@ -18,17 +23,69 @@ const Wrapper = styled.div`
   flex-direction: column;
 `;
 
-export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps> {
+export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps, IPerspectiveEditorState> {
 
     private canvasElement: HTMLCanvasElement | null = null;
 
-    public componentWillReceiveProps({contour, imageBase64}: Readonly<IPerspectiveEditorProps>): void {
-        this.draw(contour, imageBase64);
+    public constructor(props: IPerspectiveEditorProps) {
+        super(props);
+        this.onMouseDown = this.onMouseDown.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.state = {
+            contour: props.contour,
+        };
+    }
+
+    public componentWillReceiveProps({contour}: Readonly<IPerspectiveEditorProps>): void {
+        this.setState({contour});
+        this.redraw();
     }
 
     public componentDidMount(): void {
-        const {contour, imageBase64} = this.props;
-        this.draw(contour, imageBase64);
+        this.redraw();
+        if (this.canvasElement) {
+            this.canvasElement.addEventListener("mousedown", this.onMouseDown, false);
+            this.canvasElement.addEventListener("mouseup", this.onMouseUp, false);
+        }
+    }
+
+    private onMouseDown(event: MouseEvent): void {
+        const {contour} = this.state;
+        if (contour && this.canvasElement) {
+            const {layerX, layerY} = event;
+            const distances = contour.points.map(({x, y}) => Math.sqrt(Math.pow(layerX - x, 2) * Math.pow(layerY - y, 2)));
+            const minimumDistance = distances.reduce((minimum: number, distance: number) => {
+                return Math.min(minimum, distance);
+            }, Number.MAX_VALUE);
+            this.setState({draggedPointIndex: distances.indexOf(minimumDistance)});
+            this.canvasElement.addEventListener("mousemove", this.onMouseMove, false);
+        }
+    }
+
+    private onMouseUp(): void {
+        if (this.canvasElement) {
+            this.canvasElement.removeEventListener("mousemove", this.onMouseMove, false);
+        }
+    }
+
+    private onMouseMove(event: MouseEvent): void {
+        console.log(event);
+        const {layerX, layerY} = event;
+        const canvas = this.canvasElement;
+        const {contour, draggedPointIndex} = this.state;
+        if (contour && canvas) {
+            const newPoint = {x: Math.min(layerX, canvas.width), y: Math.min(layerY, canvas.height)};
+            const updatedContour = {
+                points: contour.points.map((point: Point, index: number) => index === draggedPointIndex ? newPoint : point),
+            };
+            this.setState({contour: updatedContour});
+            this.redraw();
+        }
+    }
+
+    private redraw(): void {
+        this.draw(this.state.contour, this.props.imageBase64);
     }
 
     private draw(contour?: Contour, base64Data?: string) {
@@ -59,22 +116,26 @@ export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps> 
                 if (Scale > 1)
                     Scale = 1;
 
+                Scale = 1;
                 const UseWidth = Math.floor(img.width * Scale);
                 const UseHeight = Math.floor(img.height * Scale);
 
-                const dx = Math.floor((world.width - UseWidth) / 2);
-                const dy = Math.floor((world.height - UseHeight) / 2);
+                const dx = 0; // Math.floor((world.width - UseWidth) / 2);
+                const dy = 0; // Math.floor((world.height - UseHeight) / 2);
+
 
                 if (ctx) {
                     ctx.drawImage(img, dx, dy, UseWidth, UseHeight);
 
-                    ctx.lineWidth = 10;
+                    ctx.lineWidth = 3;
+                    ctx.lineJoin = "bevel";
+                    ctx.fillStyle = "#FF0000";
                     ctx.strokeStyle = "#00FF00";
-                    ctx.fillStyle = "#00AA00";
+
                     const points = contour.points.map((point: Point) => {
                         return {
-                            x: dx + point.x,
-                            y: dy + point.y,
+                            x: dx + point.x * Scale,
+                            y: dy + point.y * Scale,
                         };
                     });
                     points.forEach(function ({x, y}, i) {
@@ -92,15 +153,9 @@ export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps> 
                     ctx.stroke();
                     points.forEach(function ({x, y}) {
                         ctx.beginPath();
-                        ctx.arc(x, y, 20, 0, Math.PI * 2);
+                        ctx.rect(x - 5, y - 5, 10, 10);
                         ctx.fill();
                     });
-                    canvas.addEventListener("mousedown", function (event) {
-                        console.log(event);
-                        ctx.beginPath();
-                        ctx.arc(event.layerX, event.layerY, 20, 0, Math.PI * 2);
-                        ctx.fill();
-                    }, false);
                 }
             };
             img.src = base64Data;

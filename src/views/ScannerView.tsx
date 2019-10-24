@@ -1,6 +1,5 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import {PerspectivePreviewConnected} from "../containers/PerspectivePreviewConnected";
 import {PerspectiveEditorConnected} from "../containers/PerspectiveEditorConnected";
 import {SelectImageButtonConnected} from "../containers/SelectImageButtonConnected";
 
@@ -19,7 +18,6 @@ export class ScannerView extends React.Component<{}> {
     public render() {
         return (
             <Wrapper>
-                <PerspectivePreviewConnected/>
                 <PerspectiveEditorConnected/>
                 <SelectImageButtonConnected/>
             </Wrapper>

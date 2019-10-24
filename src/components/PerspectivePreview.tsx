@@ -58,11 +58,15 @@ export class PerspectivePreview extends React.Component<IPerspectivePreviewProps
                 if (Scale > 1)
                     Scale = 1;
 
+
+                Scale = 1;
+
                 const UseWidth = Math.floor(img.width * Scale);
                 const UseHeight = Math.floor(img.height * Scale);
 
                 const dx = Math.floor((world.width - UseWidth) / 2);
                 const dy = Math.floor((world.height - UseHeight) / 2);
+
 
                 if (ctx) {
                     ctx.drawImage(img, dx, dy, UseWidth, UseHeight);
