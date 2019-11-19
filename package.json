@@ -1,7 +1,7 @@
 {
   "name": "Resin",
   "scripts": {
-    "test": "TZ=UTC jest --no-cache --coverage",
+    "test": "jest --no-cache --coverage",
     "clean": "trash frontend/dist .awcache coverage",
     "start": "yarn clean && yarn dll && yarn dev",
     "dev": "yarn clean && yarn dll && cross-env NODE_ENV=development webpack-dev-server --hot --config webpack.config.dev.babel.js",

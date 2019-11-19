@@ -1,5 +1,6 @@
 import * as React from 'react';
 import styled from 'styled-components';
+//import {PerspectivePreviewConnected} from "../containers/PerspectivePreviewConnected";
 import {PerspectiveEditorConnected} from "../containers/PerspectiveEditorConnected";
 import {SelectImageButtonConnected} from "../containers/SelectImageButtonConnected";
 

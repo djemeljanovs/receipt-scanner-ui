@@ -1,16 +1,20 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import Contour from "../models/Contour";
-import Point from "../models/Point";
+import {
+    Point,
+    Contour,
+} from "../models/Geometry";
+import {TouchEvent} from 'react';
+import {getContourIntersectionPoint} from "../utils/ContourUtils";
 
 interface IPerspectiveEditorProps {
     contour?: Contour;
-    imageBase64?: string;
 }
 
 interface IPerspectiveEditorState{
     contour?: Contour;
     draggedPointIndex?: number;
+    draggedPointPosition?: Point;
 }
 
 const Wrapper = styled.div`
@@ -38,8 +42,7 @@ export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps, 
     }
 
     public componentWillReceiveProps({contour}: Readonly<IPerspectiveEditorProps>): void {
-        this.setState({contour});
-        this.redraw();
+        this.setState({contour}, this.redraw);
     }
 
     public componentDidMount(): void {
@@ -54,11 +57,7 @@ export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps, 
         const {contour} = this.state;
         if (contour && this.canvasElement) {
             const {layerX, layerY} = event;
-            const distances = contour.points.map(({x, y}) => Math.sqrt(Math.pow(layerX - x, 2) * Math.pow(layerY - y, 2)));
-            const minimumDistance = distances.reduce((minimum: number, distance: number) => {
-                return Math.min(minimum, distance);
-            }, Number.MAX_VALUE);
-            this.setState({draggedPointIndex: distances.indexOf(minimumDistance)});
+            this.setDraggedPoint(layerX, layerY);
             this.canvasElement.addEventListener("mousemove", this.onMouseMove, false);
         }
     }
@@ -70,80 +69,92 @@ export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps, 
     }
 
     private onMouseMove(event: MouseEvent): void {
-        console.log(event);
         const {layerX, layerY} = event;
-        const canvas = this.canvasElement;
+        this.updateContour(layerX, layerY);
+    }
+
+    private onTouchStart(event: TouchEvent<HTMLCanvasElement>): void {
+        const x = event.targetTouches[0].pageX;
+        const y = event.targetTouches[0].pageY;
+        this.setDraggedPoint(x, y);
+    }
+
+    private onTouchMove(event: TouchEvent<HTMLCanvasElement>): void {
+        const x = event.targetTouches[0].pageX;
+        const y = event.targetTouches[0].pageY;
+        this.updateContour(x, y);
+    }
+
+    private setDraggedPoint(activityX: number, activityY: number): void {
+        const {contour} = this.state;
+        if (contour) {
+            const distances = contour.points.map(({x, y}) => Math.sqrt(Math.pow(activityX - x, 2) * Math.pow(activityY - y, 2)));
+            const minimumDistance = distances.reduce((minimum: number, distance: number) => {
+                return Math.min(minimum, distance);
+            }, Number.MAX_VALUE);
+            this.setState({draggedPointIndex: distances.indexOf(minimumDistance)});
+        }
+    }
+
+    private getUpdatedContour(updatedDraggedPoint: Point): Contour {
         const {contour, draggedPointIndex} = this.state;
-        if (contour && canvas) {
-            const newPoint = {x: Math.min(layerX, canvas.width), y: Math.min(layerY, canvas.height)};
-            const updatedContour = {
-                points: contour.points.map((point: Point, index: number) => index === draggedPointIndex ? newPoint : point),
+        if(contour) {
+            return {
+                points: contour.points.map((point: Point, index: number) => index === draggedPointIndex ? updatedDraggedPoint : point),
             };
-            this.setState({contour: updatedContour});
+        }
+        return { points: [] };
+    }
+
+    private ensureCorrectContour(contour: Contour): Contour {
+        const intersection = getContourIntersectionPoint(contour);
+        if(intersection) {
+            return this.getUpdatedContour(intersection);
+        }
+        return contour;
+    }
+
+    private updateContour(activityX: number, activityY: number) {
+        const canvas = this.canvasElement;
+        if (canvas) {
+            const newPoint = {x: Math.min(activityX, canvas.width), y: Math.min(activityY, canvas.height)};
+            const updatedContour = this.getUpdatedContour(newPoint);
+            this.setState({
+                contour: this.ensureCorrectContour(updatedContour),
+                draggedPointPosition: {
+                    x: activityX,
+                    y: activityY,
+                },
+            });
             this.redraw();
         }
     }
 
     private redraw(): void {
-        this.draw(this.state.contour, this.props.imageBase64);
+        this.draw(this.state.contour);
     }
 
-    private draw(contour?: Contour, base64Data?: string) {
-        if (contour && base64Data && this.canvasElement) {
-            const img = new Image();
+    private draw(contour?: Contour) {
+        if(contour) {
             const canvas = this.canvasElement;
-            const ctx = canvas.getContext('2d');
-            img.onload = function () {
-                const world = {
-                    width: canvas.offsetWidth,
-                    height: canvas.offsetHeight,
-                };
-                canvas.width = world.width;
-                canvas.height = world.height;
-
-                if (typeof img === "undefined")
-                    return;
-
-                const WidthDif = img.width - world.width;
-                const HeightDif = img.height - world.height;
-
-                let Scale = 0.0;
-                if (WidthDif > HeightDif) {
-                    Scale = world.width / img.width;
-                } else {
-                    Scale = world.height / img.height;
-                }
-                if (Scale > 1)
-                    Scale = 1;
-
-                Scale = 1;
-                const UseWidth = Math.floor(img.width * Scale);
-                const UseHeight = Math.floor(img.height * Scale);
-
-                const dx = 0; // Math.floor((world.width - UseWidth) / 2);
-                const dy = 0; // Math.floor((world.height - UseHeight) / 2);
-
-
+            if(canvas) {
+                const ctx = canvas.getContext('2d');
                 if (ctx) {
-                    ctx.drawImage(img, dx, dy, UseWidth, UseHeight);
-
+                    const world = {
+                        width: canvas.offsetWidth,
+                        height: canvas.offsetHeight,
+                    };
+                    canvas.width = world.width;
+                    canvas.height = world.height;
                     ctx.lineWidth = 3;
                     ctx.lineJoin = "bevel";
-                    ctx.fillStyle = "#FF0000";
+                    ctx.fillStyle = "#00FF00";
                     ctx.strokeStyle = "#00FF00";
 
-                    const points = contour.points.map((point: Point) => {
-                        return {
-                            x: dx + point.x * Scale,
-                            y: dy + point.y * Scale,
-                        };
-                    });
-                    points.forEach(function ({x, y}, i) {
+                    contour.points.forEach(function ({x, y}, i) {
                         if (i > 0) {
-                            console.log(`lineTo ${x}, ${y}`);
                             ctx.lineTo(x, y);
                         } else {
-                            console.log(`moveTo ${x}, ${y}`);
                             ctx.beginPath();
                             ctx.moveTo(x, y);
                         }
@@ -151,21 +162,22 @@ export class PerspectiveEditor extends React.Component<IPerspectiveEditorProps, 
                     });
                     ctx.closePath();
                     ctx.stroke();
-                    points.forEach(function ({x, y}) {
+                    contour.points.forEach(function ({x, y}) {
                         ctx.beginPath();
                         ctx.rect(x - 5, y - 5, 10, 10);
                         ctx.fill();
                     });
                 }
-            };
-            img.src = base64Data;
+            }
         }
     }
 
     public render() {
         return (
             <Wrapper>
-                <canvas ref={canvas => this.canvasElement = canvas} />
+                <canvas ref={canvas => this.canvasElement = canvas}
+                        onTouchStart={this.onTouchStart}
+                        onTouchMove={this.onTouchMove}/>
             </Wrapper>
         );
     }

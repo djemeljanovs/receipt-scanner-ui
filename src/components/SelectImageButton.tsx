@@ -11,7 +11,6 @@ interface ISelectImageButtonProps {
 const Wrapper = styled.div`
   text-align: center;
   width: 100%;
-  height: 100%;
   background-color: #343434;
 
   display: flex;
@@ -80,5 +79,4 @@ export class SelectImageButton extends React.Component<ISelectImageButtonProps> 
             };
         });
     }
-
 }

@@ -9,8 +9,8 @@ const mapStateToProps = () => ({
 
 const mapDispatchToProps = (dispatch: Dispatch<Action>) => ({
     onSelectImage: (imageBase64: string) => {
-        dispatch(Actions.createSetReceiptImageAction(imageBase64));
-        dispatch(Actions.createGetReceiptContourAction(imageBase64));
+        dispatch(Actions.createSetReceiptImageAction({imageBase64}));
+        dispatch(Actions.createGetReceiptContourAction({imageBase64}));
     },
 });
 

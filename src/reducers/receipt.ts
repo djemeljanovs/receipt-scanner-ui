@@ -1,5 +1,5 @@
 import { Actions, ActionTypes } from '../actions/actions';
-import Contour from "../models/Contour";
+import { Contour } from "../models/Geometry";
 
 
 export interface State {

@@ -1,9 +1,7 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import Contour from "../models/Contour";
 
 interface IPerspectivePreviewProps {
-    contour?: Contour;
     imageBase64?: string;
 }
 
@@ -21,17 +19,17 @@ export class PerspectivePreview extends React.Component<IPerspectivePreviewProps
 
     private canvasElement: HTMLCanvasElement | null = null;
 
-    public componentWillReceiveProps({contour, imageBase64}: Readonly<IPerspectivePreviewProps>): void {
-        this.draw(contour, imageBase64);
+    public componentWillReceiveProps({imageBase64}: Readonly<IPerspectivePreviewProps>): void {
+        this.draw(imageBase64);
     }
 
     public componentDidMount(): void {
-        const {contour, imageBase64} = this.props;
-        this.draw(contour, imageBase64);
+        const {imageBase64} = this.props;
+        this.draw(imageBase64);
     }
 
-    private draw(contour?: Contour, base64Data?: string) {
-        if (contour && base64Data && this.canvasElement) {
+    private draw(base64Data?: string) {
+        if (base64Data && this.canvasElement) {
             const img = new Image();
             const canvas = this.canvasElement;
             const ctx = canvas.getContext('2d');
@@ -58,9 +56,6 @@ export class PerspectivePreview extends React.Component<IPerspectivePreviewProps
                 if (Scale > 1)
                     Scale = 1;
 
-
-                Scale = 1;
-
                 const UseWidth = Math.floor(img.width * Scale);
                 const UseHeight = Math.floor(img.height * Scale);
 
@@ -79,7 +74,7 @@ export class PerspectivePreview extends React.Component<IPerspectivePreviewProps
     public render() {
         return (
             <Wrapper>
-                <img src={this.props.imageBase64} />
+                <canvas ref={canvas => this.canvasElement = canvas}/>
             </Wrapper>
         );
     }
